@@ -87,7 +87,7 @@ def main():
 
     st.sidebar.header("설정")
     year_select = st.sidebar.slider("지도로 볼 연도 선택", min_value=min_year, max_value=max_year, value=max_year, step=1)
-    cap_outliers = st.sidebar.checkbox("상위 1%로 캡핑하기", value=True)
+    cap_outliers = st.sidebar.checkbox("색깔을 상대적으로 나타내기", value=True)
     top_n = st.sidebar.slider("표에 표시할 상위(나쁨) 국가 수", min_value=5, max_value=30, value=10)
 
     # 지도 데이터 준비
