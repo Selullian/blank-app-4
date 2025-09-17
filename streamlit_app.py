@@ -78,7 +78,7 @@ def main():
     st.markdown(
         "이 앱은 **World Bank**의 'population-weighted mean annual PM2.5' 데이터를 사용합니다. \n"
         "즉, 연평균 미세먼지 수치만 제공합니다."
-        "\n 자세한 출처는 웹사이트를 맨 아래로 내려보세요."
+        "\n 자세한 출처는 웹사이트를 맨 아래로 내려 확인해주세요."
     )
 
     df = load_data_with_fallback(start_year=1990)
