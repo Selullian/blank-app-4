@@ -76,9 +76,9 @@ def main():
     st.set_page_config(page_title="국가별 PM2.5 지도/추세", layout="wide")
     st.title("🌍 국가별 PM2.5 (미세먼지) 지도 및 추세 시각화")
     st.markdown(
-        "이 앱은 **World Bank**의 'population-weighted mean annual PM2.5' 데이터를 사용하며, "
-        "평균값과 해당 연도의 최고값(toggle)도 선택할 수 있어요. \n"
-        "자세한 출처는 웹사이트를 맨 아래로 내려보세요."
+        "이 앱은 **World Bank**의 'population-weighted mean annual PM2.5' 데이터를 사용합니다. \n"
+        "즉, 연평균 미세먼지 수치만 제공합니다."
+        "\n 자세한 출처는 웹사이트를 맨 아래로 내려보세요."
     )
 
     df = load_data_with_fallback(start_year=1990)
@@ -87,20 +87,13 @@ def main():
 
     st.sidebar.header("설정")
     year_select = st.sidebar.slider("지도로 볼 연도 선택", min_value=min_year, max_value=max_year, value=max_year, step=1)
-    mode = st.sidebar.radio("지도에서 표시할 값:", ["평균값(mean)", "최고값(max)"])
     cap_outliers = st.sidebar.checkbox("상위 1%로 캡핑하기", value=True)
     top_n = st.sidebar.slider("표에 표시할 상위(나쁨) 국가 수", min_value=5, max_value=30, value=10)
 
     # 지도 데이터 준비
     df_year = df[df['year'] == year_select].copy()
-    # 그룹핑 (mean과 max 둘 다 준비)
-    df_grouped = df_year.groupby(['iso3', 'country'], as_index=False)['pm25'].agg(['mean', 'max']).reset_index()
-
-    # 어떤 모드인지에 따라
-    if mode == "평균값(mean)":
-        df_grouped['value'] = df_grouped['mean']
-    else:
-        df_grouped['value'] = df_grouped['max']
+    df_grouped = df_year.groupby(['iso3', 'country'], as_index=False)['pm25'].mean()
+    df_grouped.rename(columns={"pm25": "value"}, inplace=True)
 
     # 캡핑
     if cap_outliers:
@@ -113,19 +106,17 @@ def main():
         locations="iso3",
         color="value",
         hover_name="country",
-        hover_data={"value": ":.2f", "mean": ":.2f", "max": ":.2f"},
+        hover_data={"value": ":.2f"},
         color_continuous_scale="RdYlBu_r",
         range_color=(0, vmax),
-        labels={"value": f"PM2.5 ({mode}) µg/m³", "mean": "평균(mean)", "max": "최고(max)"},
-        title=f"{year_select}년 — 국가별 PM2.5 ({mode})"
+        labels={"value": "PM2.5 (연평균) µg/m³"},
+        title=f"{year_select}년 — 국가별 PM2.5 (연평균)"
     )
     fig_map.update_geos(showframe=False, showcoastlines=False)
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # 마우스 hover 정보: Plotly hover에서 나와야 하지만, 아래에 추가로 선택한 나라 값을 보여주기
-
     # 상위 n개국 표
-    st.subheader(f"{year_select}년 — {mode} 기준 미세먼지 매우 나쁜 상위 {top_n}개국")
+    st.subheader(f"{year_select}년 — 연평균 미세먼지 매우 나쁜 상위 {top_n}개국")
     worst = df_grouped.sort_values("value", ascending=False).head(top_n)[["country", "value"]]
     worst['value'] = worst['value'].round(2).astype(str) + " µg/m³"
     st.dataframe(worst.reset_index(drop=True))
@@ -154,19 +145,13 @@ def main():
     with col1:  # 왼쪽 그래프 영역
         if countries:
             df_ts = df[(df['country'].isin(countries)) & (df['year'].between(range_start, range_end))].copy()
-            df_ts_grouped = df_ts.groupby(['country','year'], as_index=False)['pm25'].agg(['mean','max']).reset_index()
-            if mode == "평균값(mean)":
-                df_ts_grouped['value'] = df_ts_grouped['mean']
-            else:
-                df_ts_grouped['value'] = df_ts_grouped['max']
-
             fig_ts = px.line(
-                df_ts_grouped,
-                x='year', y='value',
+                df_ts,
+                x='year', y='pm25',
                 color='country',
                 markers=True,
-                labels={"value": f"PM2.5 ({mode}) µg/m³", "year": "연도"},
-                title=f"{range_start}–{range_end}년 간 국가별 PM2.5 ({mode}) 추세"
+                labels={"pm25": "PM2.5 (연평균) µg/m³", "year": "연도"},
+                title=f"{range_start}–{range_end}년 간 국가별 PM2.5 (연평균) 추세"
             )
             try:
                 fig_ts.add_hline(y=5, line_dash="dash",
@@ -175,13 +160,14 @@ def main():
             except Exception:
                 pass
             st.plotly_chart(fig_ts, use_container_width=True)
+
     # 출처 명시
     st.markdown("---")
     st.markdown(
         """
         **데이터 출처 & API**  
         - World Bank: *EN.ATM.PM25.MC.M3* (“Population-weighted mean annual PM2.5 exposure”) 지표 — REST API 사용  
-        - World Bank 데이터 탐색: [PM2.5 air pollution, mean annual exposure (World Bank)](https://data.worldbank.org/indicator/EN.ATM.PM25.MC.M3) :contentReference[oaicite:0]{index=0}  
+        - World Bank 데이터 탐색: [PM2.5 air pollution, mean annual exposure (World Bank)](https://data.worldbank.org/indicator/EN.ATM.PM25.MC.M3)  
         """
     )
 
