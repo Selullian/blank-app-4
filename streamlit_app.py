@@ -115,11 +115,25 @@ def main():
     fig_map.update_geos(showframe=False, showcoastlines=False)
     st.plotly_chart(fig_map, use_container_width=True)
 
+    st.write("")
+    st.write("")
+    st.write("")
+    st.write("")    
+    st.write("")
+    st.write("")
+
     # 상위 n개국 표
     st.subheader(f"{year_select}년 — 연평균 미세먼지 매우 나쁜 상위 {top_n}개국")
     worst = df_grouped.sort_values("value", ascending=False).head(top_n)[["country", "value"]]
     worst['value'] = worst['value'].round(2).astype(str) + " µg/m³"
     st.dataframe(worst.reset_index(drop=True))
+
+    st.write("")
+    st.write("")
+    st.write("")
+    st.write("")    
+    st.write("")
+    st.write("")
 
     # 추세 그래프
     st.subheader("📈 나라별 연도별 추세 그래프")
@@ -164,6 +178,12 @@ def main():
     # -----------------------------
     # 보고서 추가
     # -----------------------------
+    st.write("")
+    st.write("")
+    st.write("")
+    st.write("")    
+    st.write("")
+    st.write("")
 
 
     st.subheader("📄 미림마이스터고 1학년 4반 학생을 위한 미세먼지 위험 알림과 실천 방법 연구")
