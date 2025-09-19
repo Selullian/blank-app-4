@@ -85,10 +85,29 @@ def main():
     min_year = int(df['year'].min())
     max_year = int(df['year'].max())
 
-    st.sidebar.header("설정")
-    year_select = st.sidebar.slider("지도로 볼 연도 선택", min_value=min_year, max_value=max_year, value=max_year, step=1)
+    # -----------------------------
+    # 사이드바 (설정)
+    # -----------------------------
+    st.sidebar.title("⚙️ 설정 메뉴")
+
+    st.sidebar.markdown("""🗓️ **연도 선택** 
+    보고 싶은 연도를 선택하세요.""")
+    year_select = st.sidebar.slider(
+        "지도로 볼 연도 선택",
+        min_value=min_year,
+        max_value=max_year,
+        value=max_year,
+        step=1
+    )
+
     cap_outliers = st.sidebar.checkbox("색깔을 상대적으로 나타내기", value=True)
-    top_n = st.sidebar.slider("표에 표시할 상위(나쁨) 국가 수", min_value=5, max_value=30, value=10)
+
+    st.sidebar.markdown("""📊 **상위 국가 수**  
+    미세먼지 수치가 높은 상위 몇 개 나라를 표로 볼지 정하세요.""")
+    top_n = st.sidebar.slider(
+        "표에 표시할 상위(나쁨) 국가 수",
+        min_value=5, max_value=30, value=10
+    )
 
     # 지도 데이터 준비
     df_year = df[df['year'] == year_select].copy()
@@ -115,25 +134,11 @@ def main():
     fig_map.update_geos(showframe=False, showcoastlines=False)
     st.plotly_chart(fig_map, use_container_width=True)
 
-    st.write("")
-    st.write("")
-    st.write("")
-    st.write("")    
-    st.write("")
-    st.write("")
-
     # 상위 n개국 표
     st.subheader(f"{year_select}년 — 연평균 미세먼지 매우 나쁜 상위 {top_n}개국")
     worst = df_grouped.sort_values("value", ascending=False).head(top_n)[["country", "value"]]
     worst['value'] = worst['value'].round(2).astype(str) + " µg/m³"
     st.dataframe(worst.reset_index(drop=True))
-
-    st.write("")
-    st.write("")
-    st.write("")
-    st.write("")    
-    st.write("")
-    st.write("")
 
     # 추세 그래프
     st.subheader("📈 나라별 연도별 추세 그래프")
@@ -175,17 +180,18 @@ def main():
                 pass
             st.plotly_chart(fig_ts, use_container_width=True)
 
+            # 추세 그래프 밑에 표 추가
+            st.subheader("📋 선택한 나라의 연도별 미세먼지 수치 (상세 표)")
+            df_table = df_ts.pivot_table(
+                index="country",   # 나라를 행으로
+                columns="year",    # 연도를 열로
+                values="pm25"
+            ).round(2)
+            st.dataframe(df_table)
+
     # -----------------------------
     # 보고서 추가
     # -----------------------------
-    st.write("")
-    st.write("")
-    st.write("")
-    st.write("")    
-    st.write("")
-    st.write("")
-
-
     st.subheader("📄 미림마이스터고 1학년 4반 학생을 위한 미세먼지 위험 알림과 실천 방법 연구")
 
     st.markdown(
