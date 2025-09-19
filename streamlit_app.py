@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
+import plotly.graph_objects as go
 import os
 from datetime import datetime
 
@@ -87,8 +88,9 @@ def main():
     # 사이드바 (설정)
     # -----------------------------
     st.sidebar.title("⚙️ 설정 메뉴")
-    st.sidebar.markdown("""🗓️ **연도 선택**  
-보고 싶은 연도를 선택하세요.""")
+
+    st.sidebar.markdown("""🗓️ **연도 선택** 
+    보고 싶은 연도를 선택하세요.""")
     year_select = st.sidebar.slider(
         "지도로 볼 연도 선택",
         min_value=min_year,
@@ -100,7 +102,7 @@ def main():
     cap_outliers = st.sidebar.checkbox("색깔을 상대적으로 나타내기", value=True)
 
     st.sidebar.markdown("""📊 **상위 국가 수**  
-미세먼지 수치가 높은 상위 몇 개 나라를 표로 볼지 정하세요.""")
+    미세먼지 수치가 높은 상위 몇 개 나라를 표로 볼지 정하세요.""")
     top_n = st.sidebar.slider(
         "표에 표시할 상위(나쁨) 국가 수",
         min_value=5, max_value=30, value=10
@@ -111,8 +113,10 @@ def main():
     df_grouped = df_year.groupby(['iso3', 'country'], as_index=False)['pm25'].mean()
     df_grouped.rename(columns={"pm25": "value"}, inplace=True)
 
-    # 캡핑
-    vmax = float(df_grouped['value'].quantile(0.99)) if cap_outliers else float(df_grouped['value'].max())
+    if cap_outliers:
+        vmax = float(df_grouped['value'].quantile(0.99))
+    else:
+        vmax = float(df_grouped['value'].max())
 
     fig_map = px.choropleth(
         df_grouped,
@@ -128,19 +132,39 @@ def main():
     fig_map.update_geos(showframe=False, showcoastlines=False)
     st.plotly_chart(fig_map, use_container_width=True)
 
-    st.write("\n")
+    st.write("")
+    st.write("")
 
-    # 상위 n개국 표
-    st.subheader(f"{year_select}년 — 연평균 미세먼지 매우 나쁜 상위 {top_n}개국")
-    worst = df_grouped.sort_values("value", ascending=False).head(top_n)[["country", "value"]]
-    worst['value'] = worst['value'].round(2).astype(str) + " µg/m³"
-    st.dataframe(worst.reset_index(drop=True), use_container_width=True)
-
-    st.write("\n\n")
-
-        # -----------------------------
-    # 나라별 연도별 추세 그래프
     # -----------------------------
+    # 상위 n개국 피라미드형 막대 그래프
+    # -----------------------------
+    worst = df_grouped.sort_values("value", ascending=False).head(top_n)
+    fig_bar = go.Figure(go.Bar(
+        x=worst['value'][::-1],
+        y=worst['country'][::-1],
+        orientation='h',
+        marker=dict(
+            color=worst['value'][::-1],
+            colorscale='OrRd',
+            showscale=True,
+            colorbar=dict(title="PM2.5 µg/m³")
+        ),
+        text=worst['value'][::-1].round(2).astype(str) + " µg/m³",
+        textposition='outside'
+    ))
+    fig_bar.update_layout(
+        xaxis_title="PM2.5 (연평균, µg/m³)",
+        yaxis_title="국가",
+        margin=dict(l=100, r=20, t=40, b=40),
+        height=400
+    )
+    st.subheader(f"{year_select}년 — 연평균 미세먼지 매우 나쁜 상위 {top_n}개국")
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+    st.write("")
+    st.write("")
+
+    # 추세 그래프
     st.subheader("📈 나라별 연도별 추세 그래프")
     col1, col2 = st.columns([3, 1])
 
@@ -179,20 +203,16 @@ def main():
             st.plotly_chart(fig_ts, use_container_width=True)
 
             # -----------------------------
-            # 연도별 데이터 표 (가로 스크롤)
+            # 선택 국가 연도별 수치 표 (가로 스크롤)
             # -----------------------------
-            df_pivot = df_ts.pivot(index='country', columns='year', values='pm25')
-            st.subheader("🗂️ 선택 국가 연도별 PM2.5 수치")
-            st.dataframe(df_pivot.style.format("{:.2f} µg/m³"), use_container_width=True)
+            pivot_df = df_ts.pivot(index='country', columns='year', values='pm25').round(2)
+            st.subheader("📋 선택 국가 연도별 PM2.5 수치")
+            st.dataframe(pivot_df, use_container_width=True)
 
+    # 보고서와 출처는 기존 코드 그대로
     st.write("")
     st.write("")
-    st.write("")
-    st.write("")    
-    
-    # -----------------------------
-    # 보고서 추가
-    # -----------------------------
+
     st.subheader("📄 미림마이스터고 1학년 4반 학생을 위한 미세먼지 위험 알림과 실천 방법 연구")
     st.markdown(
         """
@@ -219,29 +239,27 @@ def main():
 
 ---  
 
-**🌫️ 미세먼지가 심해지는 원인과 해결 방안**  
-**원인**  
-1. 산업·교통 배출 증가  
-2. 계절적·기상적 요인 (겨울철 난방, 대기 정체 등)  
-3. 국외 요인 (황사, 국외 산업 배출물)  
-4. 생활 패턴 (난방용 석탄·목재 사용, 교통량 등)  
-
-**해결 방안**  
-1. 정부 및 산업 차원: 배출 규제 강화, 친환경 에너지 확대, 대기질 모니터링  
-2. 학교·개인 차원: 미세먼지 경보 확인, 공기청정기 및 마스크 사용, 학생 참여형 캠페인  
-3. 장기적·사회적 접근: 국제 협력, 지역사회 환경 감시 및 데이터 공유  
+**결론: 청소년 건강과 안전한 활동을 위한 학생 주도 제언**  
+(P)oint: 미세먼지는 청소년의 건강과 일상 활동에 실질적 피해를 주기 때문에, 학생 스스로 대응하고 행동해야 한다.  
+(R)eason: 정부와 학교 차원의 대책도 중요하지만, 일상에서 학생이 스스로 실천할 수 있는 작은 행동이 모여 더 큰 변화를 만든다.  
+(E)xample: 첫째, 마스크 착용과 등하교 전 공기질 확인은 기본적인 자기 보호 수단이다. 둘째, ‘미세먼지 경보 알림제’를 학급 단위로 운영하여 실외 활동 여부를 학생 스스로 판단할 수 있도록 한다. 셋째, 교실 내 공기정화기·식물 키우기 같은 작은 실천도 효과가 있으며, 장기적으로는 ‘학생 미세먼지 감시단’을 만들어 교내 대기질 변화를 기록하고 교육청에 건의할 수도 있다.  
+(P)oint: 결국 청소년은 단순한 피해자가 아니라, 스스로 건강을 지키고 사회적 변화를 만들어낼 수 있는 주체다. 따라서 우리는 미세먼지를 정확히 이해하고, 생활 속에서 실천하며, 목소리를 내는 행동을 통해 안전한 학교 환경을 만들어가야 한다.  
 
 ---  
-"""
-    )
 
+**참고 자료**  
+- 환경부 대기환경연보 (2013~2022)  
+- 질병관리청 청소년 건강행태조사 (2019~2022)  
+- 보건복지부 보건의료 빅데이터 개방시스템  
+    """
+    )
 
     # 출처
     st.markdown("---")
     st.markdown(
         """
         **데이터 출처 & API**  
-        - World Bank: *EN.ATM.PM25.MC.M3* (“Population-weighted mean annual PM2.5 exposure”) 지표 — REST API 사용  
+        - World Bank: *EN.ATM.PM25.MC.M3* 지표 — REST API 사용  
         - World Bank 데이터 탐색: [PM2.5 air pollution, mean annual exposure (World Bank)](https://data.worldbank.org/indicator/EN.ATM.PM25.MC.M3)  
         """
     )
